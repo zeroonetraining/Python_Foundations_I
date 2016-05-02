@@ -1,0 +1,53 @@
+#!/bin/sh
+#This script controls how to execute the project skeleton.
+
+
+summarize_test_results ()
+{
+    #A function to summarize the results of a nosetest run
+    #Arguments:
+    #filename: The name of the file the nosetests are saved to
+    if [ $# -ne 1 ]; then
+      echo "summarize_test_results: $# arguments passed instead of 1!"
+      for arg in "$@"
+      do
+        echo "${arg}"
+      done
+      return 1
+    fi
+    filename="${1}"
+    num_tests_passed=0
+    num_tests_failed=1
+    num_tests_not_implemented=0
+    #Get summary statistics - note that if the test suite errors because of a python bug in the program it will return all zeros:
+    #echo "${filename}"
+    num_tests=`grep "^Ran [0-9]* test[s]* in" ${filename} | awk '{print $2}'`
+    if [ ! ${num_tests} ]; then
+	echo "A syntax error in your project file prevented the running of the tests."
+	return 0
+    fi
+    num_tests_passed_or_not_implemented=`grep "ok$" ${filename} | wc -l | awk '{print $1}'`
+    num_tests_not_implemented=`grep "warnings.warn(warning_string,UserWarning)" ${filename} | wc -l | awk '{print $1}'`
+    num_tests_failed=$((${num_tests}-${num_tests_passed_or_not_implemented}))
+    num_tests_passed=$((${num_tests_passed_or_not_implemented}-${num_tests_not_implemented}))
+    echo "${num_tests_passed} tests passed, ${num_tests_failed} tests failed, and ${num_tests_not_implemented} not yet implemented"
+    return 0
+}
+    
+if [ $# -ne 1 ] ; then
+    echo "Syntax: [file to be tested]"
+    exit 1
+fi
+
+test_filename="tests/test_"`basename $1`
+if [ $1 == 'all' ]; then
+    test_filename="tests/"
+fi
+
+rm -f .saved_tests.nogit
+nosetests -sv ${test_filename} 2>&1 | tee .saved_tests.nogit
+summarize_test_results ".saved_tests.nogit"
+rm -f .saved_tests.nogit
+
+
+exit 0
